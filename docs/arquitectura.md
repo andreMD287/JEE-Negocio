@@ -119,7 +119,70 @@ _Pendiente (Rol 2)._
 
 ## Vista física / despliegue
 
-_Pendiente (Rol 1)._
+Muestra en qué nodos y contenedores se ejecuta el software y cómo se comunican.
+
+### Diagrama de despliegue
+
+```mermaid
+flowchart LR
+    CLIENT["<b>Cliente HTTP</b><br/>curl / Postman"]
+
+    subgraph HOST["Nodo: máquina anfitriona (Docker Engine)"]
+        subgraph CT["Contenedor: recursos<br/>imagen payara/server-full:6.2024.6-jdk17"]
+            subgraph JVM["JVM · Java 17"]
+                subgraph PAYARA["Payara Server 6 · domain1"]
+                    subgraph WAR["recursos.war · contexto /recursos"]
+                        JAXRS["Contenedor web / JAX-RS<br/>/recursos/api/*"]
+                        EJBC["Contenedor EJB<br/>pool de ResourceRequestServiceBean"]
+                        CDI["CDI<br/>InMemoryResourceRequestRepository<br/>(1 instancia)"]
+                        HEAP[("Heap de la JVM<br/>ConcurrentHashMap")]
+                    end
+                    ADMIN["Consola de administración"]
+                end
+            end
+        end
+    end
+
+    CLIENT -->|"HTTP/JSON · host:8080 → contenedor:8080"| JAXRS
+    CLIENT -.->|"HTTPS · 4848 (opcional)"| ADMIN
+    JAXRS -->|llamada local| EJBC
+    EJBC -->|llamada local| CDI
+    CDI --> HEAP
+```
+
+| Nodo / artefacto | Detalle |
+|---|---|
+| Máquina anfitriona | Cualquier equipo con Docker; un solo nodo |
+| Contenedor `recursos` | Imagen construida con el `Dockerfile` del proyecto |
+| Servidor de aplicaciones | Payara Server 6 (Jakarta EE 10) sobre JDK 17 |
+| Artefacto desplegado | `recursos.war`, copiado a `$DEPLOY_DIR` y desplegado al arrancar |
+| Puertos | `8080` HTTP (API REST); `4848` consola de administración (opcional) |
+| Almacenamiento | Ninguno externo: los datos viven en el heap de la JVM |
+
+Todas las llamadas internas (REST → EJB → repositorio) son **locales**, dentro de la misma JVM (`@Local`, sin serialización ni red). La única comunicación por red es la del cliente con la API.
+
+### Construcción de la imagen
+
+```mermaid
+flowchart LR
+    SRC["pom.xml + src/"] --> B1["Etapa 1: build<br/>maven:3.9-eclipse-temurin-17<br/>mvn package"]
+    B1 -->|target/recursos.war| B2["Etapa 2: runtime<br/>payara/server-full:6.2024.6-jdk17<br/>COPY → $DEPLOY_DIR"]
+    B2 --> IMG["Imagen recursos-negocio"]
+```
+
+La imagen final solo tiene Payara y el WAR, sin Maven ni el código fuente. Para compilar no hace falta tener Java ni Maven instalados en la máquina anfitriona.
+
+```bash
+docker build -t recursos-negocio .
+docker run --rm -p 8080:8080 --name recursos recursos-negocio
+# si el 8080 del host está ocupado: -p 8081:8080
+```
+
+### Implicaciones del despliegue
+
+- **Los datos son volátiles.** Al reiniciar o eliminar el contenedor se pierden las solicitudes, lo cual es aceptable porque el enunciado pide una colección en memoria.
+- **Solo funciona con una instancia.** Si se levantaran varios contenedores detrás de un balanceador, cada uno tendría su propio `Map` y verían datos distintos.
+- **Cómo escalaría:** para persistir y tener varias instancias basta con agregar un nodo de base de datos y una implementación del puerto (por ejemplo, JPA). Gracias al desacoplamiento descrito en la vista de desarrollo, el EJB y la API no cambian; solo cambian el tier de datos y este diagrama.
 
 ## Escenarios
 
