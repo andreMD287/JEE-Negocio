@@ -142,6 +142,15 @@ classDiagram
         +findAll() List
     }
 
+    class InMemoryResourceRequestRepository {
+        <<ApplicationScoped>>
+        -ConcurrentMap storage
+        -AtomicLong sequence
+        +save(request) ResourceRequest
+        +findById(id) Optional
+        +findAll() List
+    }
+
     class ResourceRequest {
         -Long id
         -String disasterDescription
@@ -182,6 +191,7 @@ classDiagram
 
     ResourceRequestService <|.. ResourceRequestServiceBean
     ResourceRequestServiceBean --> ResourceRequestRepository
+    ResourceRequestRepository <|.. InMemoryResourceRequestRepository
     ResourceRequestServiceBean --> CreateResourceRequestCommand
     ResourceRequestServiceBean --> ResourceRequestView
     ResourceRequestRepository --> ResourceRequest
@@ -189,7 +199,7 @@ classDiagram
     ResourceRequest --> RequestStatus
 ```
 
-El cliente del negocio depende de `ResourceRequestService`, mientras que el EJB depende de `ResourceRequestRepository`. Ninguna operación del EJB conoce la implementación concreta del almacenamiento.
+El cliente del negocio depende de `ResourceRequestService`, mientras que el EJB depende de `ResourceRequestRepository`. Ninguna operación del EJB conoce la implementación concreta del almacenamiento: `InMemoryResourceRequestRepository` implementa el puerto, pero el EJB solo se relaciona con la interfaz.
 
 Las excepciones expresan los resultados inválidos del negocio:
 
