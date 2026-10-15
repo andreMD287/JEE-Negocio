@@ -1,0 +1,834 @@
+{
+  "info": {
+    "name": "Gestión de Recursos - Evidencias",
+    "description": "Evidencias del Taller 2 (Jakarta EE + Tier de Negocio). Ejecutar completa y en orden con el Collection Runner: cada petición verifica su código HTTP y su respuesta. Ajustar la variable baseUrl al puerto usado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/recursos/api"
+    },
+    {
+      "key": "idAgua",
+      "value": ""
+    },
+    {
+      "key": "idMantas",
+      "value": ""
+    },
+    {
+      "key": "idInexistente",
+      "value": "999999"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Operaciones",
+      "item": [
+        {
+          "name": "Registrar solicitud (ALTA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"se asigna id\", () => pm.expect(r.id).to.be.a(\"number\"));",
+                  "pm.test(\"inicia PENDIENTE\", () => pm.expect(r.status).to.eql(\"PENDIENTE\"));",
+                  "pm.test(\"header Location\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/requests/\" + r.id));",
+                  "pm.collectionVariables.set(\"idAgua\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 200,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar solicitud (MEDIA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"inicia PENDIENTE\", () => pm.expect(r.status).to.eql(\"PENDIENTE\"));",
+                  "pm.collectionVariables.set(\"idMantas\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Incendio forestal en la vereda El Retiro\",\n  \"resourceType\": \"Mantas\",\n  \"quantity\": 50,\n  \"priority\": \"MEDIA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar todas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(r => r.id);",
+                  "pm.test(\"incluye las dos registradas\", () => pm.expect(ids).to.include.members([+pm.collectionVariables.get(\"idAgua\"), +pm.collectionVariables.get(\"idMantas\")]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"es la solicitud pedida\", () => pm.expect(r.id).to.eql(+pm.collectionVariables.get(\"idAgua\")));",
+                  "pm.test(\"datos completos\", () => pm.expect(r).to.include({ resourceType: \"Agua potable\", quantity: 200, priority: \"ALTA\" }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{idAgua}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{idAgua}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar pendientes (antes de atender)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"todas PENDIENTE\", () => r.forEach(x => pm.expect(x.status).to.eql(\"PENDIENTE\")));",
+                  "pm.test(\"incluye la de agua\", () => pm.expect(r.map(x => x.id)).to.include(+pm.collectionVariables.get(\"idAgua\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "pending"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atender solicitud",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"queda ATENDIDA\", () => pm.expect(pm.response.json().status).to.eql(\"ATENDIDA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{idAgua}}/attend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{idAgua}}",
+                "attend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar pendientes (después de atender)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(x => x.id);",
+                  "pm.test(\"ya no incluye la atendida\", () => pm.expect(ids).to.not.include(+pm.collectionVariables.get(\"idAgua\")));",
+                  "pm.test(\"sigue incluyendo la de mantas\", () => pm.expect(ids).to.include(+pm.collectionVariables.get(\"idMantas\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "pending"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Reglas de negocio",
+      "item": [
+        {
+          "name": "Atender una solicitud ya ATENDIDA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code = ALREADY_ATTENDED\", () => pm.expect(pm.response.json().code).to.eql(\"ALREADY_ATTENDED\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{idAgua}}/attend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{idAgua}}",
+                "attend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atender una solicitud inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code = REQUEST_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"REQUEST_NOT_FOUND\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{idInexistente}}/attend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{idInexistente}}",
+                "attend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar una solicitud inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code = REQUEST_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"REQUEST_NOT_FOUND\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{idInexistente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{idInexistente}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cantidad cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 0,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cantidad negativa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": -5,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sin cantidad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Descripción vacía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"   \",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 200,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sin descripción",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 200,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tipo de recurso vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"\",\n  \"quantity\": 200,\n  \"priority\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Prioridad inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 200,\n  \"priority\": \"URGENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sin prioridad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disasterDescription\": \"Inundación en el sector norte\",\n  \"resourceType\": \"Agua potable\",\n  \"quantity\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Errores de entrada (HTTP)",
+      "item": [
+        {
+          "name": "Cuerpo vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = EMPTY_BODY\", () => pm.expect(pm.response.json().code).to.eql(\"EMPTY_BODY\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          }
+        },
+        {
+          "name": "JSON mal formado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = MALFORMED_JSON\", () => pm.expect(pm.response.json().code).to.eql(\"MALFORMED_JSON\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"quantity\": "
+            }
+          }
+        },
+        {
+          "name": "Tipo de dato incorrecto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code = MALFORMED_JSON\", () => pm.expect(pm.response.json().code).to.eql(\"MALFORMED_JSON\"));",
+                  "pm.test(\"respuesta de error uniforme\", () => pm.expect(pm.response.json()).to.have.all.keys(\"code\", \"message\", \"timestamp\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"disasterDescription\":\"x\",\"resourceType\":\"y\",\"quantity\":\"muchos\",\"priority\":\"ALTA\"}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
