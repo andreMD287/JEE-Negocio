@@ -91,7 +91,6 @@ Las flechas continuas son dependencias de uso y las discontinuas unen cada inter
 - `@ApplicationScoped`: existe una sola instancia del repositorio, compartida por todas las instancias del pool de EJB `@Stateless`.
 - `ConcurrentHashMap` para el almacenamiento y `AtomicLong` para generar identificadores únicos.
 - Verificado en `InMemoryResourceRequestRepositoryTest.concurrentSavesAreSafe`: 8 hilos con 250 inserciones cada uno, sin identificadores repetidos ni pérdidas.
-- Limitación conocida: dos invocaciones simultáneas de `attend` sobre la misma solicitud podrían superar ambas la verificación de estado `PENDIENTE`. Con una base de datos se resolvería mediante bloqueo optimista (columna de versión).
 
 ### Construcción y empaquetado
 
