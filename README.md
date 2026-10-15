@@ -10,19 +10,41 @@ Las reglas de negocio están en un **EJB de sesión sin estado** (`@Stateless`).
 
 ```mermaid
 flowchart TB
-    C["Cliente HTTP<br/>(Postman / Newman)"] -->|JSON| API
-    subgraph WAR["recursos.war · Payara Server 6 · Docker"]
-        API["<b>api</b><br/>ResourceRequestResource + ExceptionMappers"]
-        SVC["«interface»<br/><b>ResourceRequestService</b>"]
-        EJB["<b>ResourceRequestServiceBean</b><br/>@Stateless · reglas de negocio"]
-        PORT["«interface»<br/><b>ResourceRequestRepository</b>"]
-        MEM["<b>InMemoryResourceRequestRepository</b><br/>@ApplicationScoped · ConcurrentHashMap"]
-        API -->|usa| SVC
-        EJB -.->|implementa| SVC
-        EJB -->|"@Inject"| PORT
-        MEM -.->|implementa| PORT
+    classDef client fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A
+    classDef api fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
+    classDef biz fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
+    classDef port fill:#FFFFFF,stroke:#7C3AED,stroke-width:2px,stroke-dasharray:5 3,color:#0F172A
+    classDef data fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#0F172A
+
+    C["<b>Cliente HTTP</b><br/>Postman · Newman"]:::client
+
+    subgraph WAR["Payara Server 6 · Docker"]
+        subgraph P["Tier de presentación"]
+            API["<b>ResourceRequestResource</b><br/>JAX-RS · ExceptionMappers"]:::api
+        end
+        subgraph N["Tier de negocio"]
+            SVC["«interface»<br/><b>ResourceRequestService</b>"]:::port
+            EJB["<b>ResourceRequestServiceBean</b><br/>@Stateless · reglas de negocio"]:::biz
+            PORT["«interface»<br/><b>ResourceRequestRepository</b>"]:::port
+        end
+        subgraph D["Tier de datos"]
+            MEM["<b>InMemoryResourceRequestRepository</b><br/>@ApplicationScoped · ConcurrentHashMap"]:::data
+        end
     end
+
+    C ==>|"HTTP · JSON"| API
+    API -->|usa| SVC
+    SVC -.->|implementada por| EJB
+    EJB -->|"usa (@Inject)"| PORT
+    PORT -.->|implementada por| MEM
+
+    style WAR fill:#F8FAFC,stroke:#94A3B8
+    style P fill:#EFF6FF,stroke:#93C5FD
+    style N fill:#F5F3FF,stroke:#C4B5FD
+    style D fill:#ECFDF5,stroke:#6EE7B7
 ```
+
+Las interfaces (borde punteado) pertenecen al tier de negocio; el tier de datos solo implementa el puerto que el negocio define.
 
 ### Cómo se desacopla el tier de negocio del tier de datos
 
@@ -161,7 +183,5 @@ npx newman run docs/evidencias/recursos.postman_collection.json \
 
 ## Integrantes
 
-| Integrante | Responsabilidades |
-|---|---|
-| André Landinez | Configuración (Maven, Payara, Docker), dominio, contratos y excepciones, repositorio en memoria, API REST y manejo de errores, vistas de desarrollo y física, documentación de la API y evidencias |
-| Andrés Barrios | Propuesta inicial de arquitectura, EJB y reglas de negocio, pruebas del EJB, vistas lógica, de procesos y escenarios, integración final |
+- André Landinez
+- Andrés Barrios
