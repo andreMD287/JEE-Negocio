@@ -85,4 +85,3 @@ npx newman run docs/evidencias/recursos.postman_collection.json \
   --env-var "baseUrl=http://localhost:8080/recursos/api"
 ```
 
-> Con `curl` en la terminal de Windows las tildes escritas en el comando llegan mal codificadas; el servidor sí maneja bien el UTF-8. Para las capturas es mejor usar Postman, o `curl --data-binary @archivo.json`.

@@ -381,7 +381,7 @@ Muestra los nodos y contenedores donde se ejecuta el software y cómo se comunic
 ### Diagrama de despliegue
 
 ```mermaid
-flowchart LR
+flowchart TB
     classDef client fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A
     classDef api fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
     classDef biz fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
@@ -390,10 +390,10 @@ flowchart LR
 
     CLIENT["<b>Cliente HTTP</b><br/>Postman · Newman · curl"]:::client
 
-    subgraph HOST["Nodo: máquina anfitriona · Docker Engine"]
-        subgraph CT["Contenedor «recursos»<br/>payara/server-full:6.2024.6-jdk17"]
-            subgraph PAYARA["Payara Server 6 · JVM Java 17"]
-                subgraph WAR["recursos.war · contexto /recursos"]
+    subgraph HOST["Máquina anfitriona · Docker"]
+        subgraph CT["Contenedor «recursos»"]
+            subgraph PAYARA["Payara Server 6 · JDK 17"]
+                subgraph WAR["recursos.war"]
                     JAXRS["<b>Contenedor web</b><br/>JAX-RS · /recursos/api/*"]:::api
                     EJBC["<b>Contenedor EJB</b><br/>pool de ResourceRequestServiceBean"]:::biz
                     CDI["<b>CDI</b><br/>InMemoryResourceRequestRepository<br/>instancia única"]:::data
@@ -459,7 +459,7 @@ docker run --rm -p 8080:8080 --name recursos recursos-negocio
 
 ## Escenarios
 
-Los casos de uso del sistema y las reglas de negocio que se aplican en cada uno:
+El diagrama muestra los casos de uso del sistema y las reglas de negocio que aplica cada uno. Cada escenario recorre las demás vistas: entra por el tier de presentación ([desarrollo](#vista-de-desarrollo)), aplica las reglas en el EJB ([lógica](#vista-lógica)), sigue una de las secuencias de la [vista de procesos](#vista-de-procesos) y se ejecuta en el contenedor descrito en la [vista física](#vista-física--despliegue). Todos están verificados en las [evidencias](evidencias/README.md).
 
 ```mermaid
 flowchart LR
@@ -499,5 +499,3 @@ flowchart LR
 | Atender una solicitud pendiente | El EJB cambia el estado y la guarda nuevamente | Solicitud en estado `ATENDIDA` (200) |
 | Atender una solicitud ya atendida | El estado actual es `ATENDIDA` | `AlreadyAttendedException` (409) |
 | Atender una solicitud inexistente | El repositorio no encuentra la solicitud | `RequestNotFoundException` (404) |
-
-Cada escenario recorre las demás vistas: entra por el tier de presentación ([desarrollo](#vista-de-desarrollo)), aplica las reglas en el EJB ([lógica](#vista-lógica)), sigue una de las secuencias de la [vista de procesos](#vista-de-procesos) y se ejecuta en el contenedor descrito en la [vista física](#vista-física--despliegue). Todos están verificados en las [evidencias](evidencias/README.md).
