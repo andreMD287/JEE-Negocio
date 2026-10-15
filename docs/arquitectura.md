@@ -10,7 +10,6 @@ Este documento describe la arquitectura del tier de negocio mediante el modelo d
 | [Física / despliegue](#vista-física--despliegue) | ¿Dónde se ejecuta el software? |
 | [Escenarios](#escenarios) | ¿Qué casos de uso recorren las vistas anteriores? |
 
-Convención de colores en todos los diagramas: **azul** presentación (REST), **violeta** negocio (EJB), **ámbar** dominio, **verde** datos, **gris** infraestructura.
 
 ## Interfaces entre tiers
 
@@ -41,44 +40,31 @@ Muestra la organización del código en paquetes, las capas a las que pertenecen
 
 ```mermaid
 flowchart TB
-    classDef api fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
-    classDef biz fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
-    classDef port fill:#FFFFFF,stroke:#7C3AED,stroke-width:2px,stroke-dasharray:5 3,color:#0F172A
-    classDef dom fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#0F172A
-    classDef data fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#0F172A
-
     subgraph L1["Tier de presentación"]
-        API["<b>api</b><br/>ResourceRequestResource<br/>ExceptionMappers · DTOs"]:::api
+        API["api<br/>ResourceRequestResource<br/>ExceptionMappers, DTOs"]
     end
-
     subgraph L2["Tier de negocio"]
-        CONTRACT["<b>business.contract</b><br/>«interface» ResourceRequestService<br/>Command · View"]:::port
-        EJB["<b>business.ejb</b><br/>ResourceRequestServiceBean<br/>@Stateless"]:::biz
-        EXC["<b>business.exception</b><br/>Validation · NotFound · AlreadyAttended"]:::biz
-        PORT["<b>business.port</b><br/>«interface» ResourceRequestRepository"]:::port
+        CONTRACT["business.contract<br/>«interface» ResourceRequestService"]
+        EJB["business.ejb<br/>ResourceRequestServiceBean"]
+        EXC["business.exception<br/>excepciones de negocio"]
+        PORT["business.port<br/>«interface» ResourceRequestRepository"]
     end
-
     subgraph L3["Tier de datos"]
-        DATA["<b>data.memory</b><br/>InMemoryResourceRequestRepository<br/>@ApplicationScoped"]:::data
+        DATA["data.memory<br/>InMemoryResourceRequestRepository"]
     end
-
-    DOMAIN["<b>domain.model</b><br/>ResourceRequest · Priority · RequestStatus"]:::dom
+    DOMAIN["domain.model<br/>ResourceRequest, Priority, RequestStatus"]
 
     API -->|usa| CONTRACT
     API -->|traduce a HTTP| EXC
     CONTRACT -.->|implementada por| EJB
     EJB -->|lanza| EXC
-    EJB -->|"usa (@Inject)"| PORT
+    EJB -->|usa| PORT
     PORT -.->|implementada por| DATA
     L2 --> DOMAIN
     L3 --> DOMAIN
-
-    style L1 fill:#EFF6FF,stroke:#93C5FD
-    style L2 fill:#F5F3FF,stroke:#C4B5FD
-    style L3 fill:#ECFDF5,stroke:#6EE7B7
 ```
 
-Las flechas continuas son dependencias de uso y las discontinuas unen cada interfaz (borde punteado) con su implementación. Ambas interfaces pertenecen al tier de negocio: `data.memory` implementa `business.port` y, por tanto, **el tier de datos depende del tier de negocio, y no al revés** (inversión de dependencias).
+Las flechas continuas son dependencias de uso y las discontinuas unen cada interfaz con su implementación. Ambas interfaces pertenecen al tier de negocio: `data.memory` implementa `business.port` y, por tanto, **el tier de datos depende del tier de negocio, y no al revés** (inversión de dependencias).
 
 | Paquete | Tier | Responsabilidad | Depende de |
 |---|---|---|---|
@@ -131,7 +117,6 @@ Presenta las clases principales y sus relaciones, sin considerar detalles de des
 ```mermaid
 classDiagram
     direction TB
-
     class ResourceRequestService {
         <<interface>>
         +register(CreateResourceRequestCommand) ResourceRequestView
@@ -193,25 +178,14 @@ classDiagram
         PENDIENTE
         ATENDIDA
     }
-
-    ResourceRequestService <|.. ResourceRequestServiceBean : implementa
-    ResourceRequestServiceBean ..> CreateResourceRequestCommand : recibe
-    ResourceRequestServiceBean ..> ResourceRequestView : devuelve
-    ResourceRequestServiceBean --> ResourceRequestRepository : usa
-    ResourceRequestRepository <|.. InMemoryResourceRequestRepository : implementa
-    ResourceRequestRepository ..> ResourceRequest : gestiona
+    ResourceRequestService <|.. ResourceRequestServiceBean
+    ResourceRequestServiceBean ..> CreateResourceRequestCommand
+    ResourceRequestServiceBean ..> ResourceRequestView
+    ResourceRequestServiceBean --> ResourceRequestRepository
+    ResourceRequestRepository <|.. InMemoryResourceRequestRepository
+    ResourceRequestRepository ..> ResourceRequest
     ResourceRequest --> Priority
     ResourceRequest --> RequestStatus
-
-    style ResourceRequestService fill:#FFFFFF,stroke:#7C3AED,stroke-width:2px,stroke-dasharray:5 3
-    style ResourceRequestServiceBean fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px
-    style CreateResourceRequestCommand fill:#F5F3FF,stroke:#7C3AED
-    style ResourceRequestView fill:#F5F3FF,stroke:#7C3AED
-    style ResourceRequestRepository fill:#FFFFFF,stroke:#7C3AED,stroke-width:2px,stroke-dasharray:5 3
-    style InMemoryResourceRequestRepository fill:#D1FAE5,stroke:#059669,stroke-width:2px
-    style ResourceRequest fill:#FEF3C7,stroke:#D97706,stroke-width:2px
-    style Priority fill:#FEF3C7,stroke:#D97706
-    style RequestStatus fill:#FEF3C7,stroke:#D97706
 ```
 
 El cliente del negocio depende de `ResourceRequestService` y el EJB depende de `ResourceRequestRepository`. `InMemoryResourceRequestRepository` implementa el puerto, pero el EJB solo se relaciona con la interfaz, nunca con la implementación concreta.
@@ -234,36 +208,25 @@ Describe la colaboración entre componentes en tiempo de ejecución para cada op
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor C as Cliente
-    box rgba(37,99,235,0.10) Tier de presentación
-        participant API as ResourceRequestResource
-        participant MAP as ExceptionMapper
-    end
-    box rgba(124,58,237,0.10) Tier de negocio
-        participant EJB as ResourceRequestServiceBean
-    end
-    box rgba(5,150,105,0.10) Tier de datos
-        participant REP as InMemoryResourceRequestRepository
-    end
+    participant API as ResourceRequestResource
+    participant EJB as ResourceRequestServiceBean
+    participant REP as InMemoryResourceRequestRepository
+    participant MAP as ExceptionMapper
 
-    C->>API: POST /requests (JSON)
+    C->>API: POST /requests
     API->>EJB: register(command)
-    activate EJB
-    Note over EJB: Valida descripción, tipo de recurso,<br/>cantidad > 0 y prioridad
-
-    alt Datos inválidos
-        EJB--)MAP: BusinessValidationException
+    EJB->>EJB: validar descripción, tipo,<br/>cantidad > 0 y prioridad
+    alt datos inválidos
+        EJB-->>MAP: BusinessValidationException
         MAP-->>C: 400 VALIDATION_ERROR
-    else Datos válidos
-        EJB->>EJB: Crear ResourceRequest con estado PENDIENTE
+    else datos válidos
+        EJB->>EJB: crear solicitud PENDIENTE
         EJB->>REP: save(request)
-        REP->>REP: Asignar id (AtomicLong)
-        REP-->>EJB: copia de la solicitud guardada
+        REP-->>EJB: solicitud con id asignado
         EJB-->>API: ResourceRequestView
-        API-->>C: 201 Created + Location
+        API-->>C: 201 Created
     end
-    deactivate EJB
 ```
 
 El cliente no envía el identificador ni el estado: el repositorio genera el identificador y el EJB asigna siempre `PENDIENTE`.
@@ -272,75 +235,55 @@ El cliente no envía el identificador ni el estado: el repositorio genera el ide
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor C as Cliente
-    box rgba(37,99,235,0.10) Tier de presentación
-        participant API as ResourceRequestResource
-        participant MAP as ExceptionMapper
-    end
-    box rgba(124,58,237,0.10) Tier de negocio
-        participant EJB as ResourceRequestServiceBean
-    end
-    box rgba(5,150,105,0.10) Tier de datos
-        participant REP as InMemoryResourceRequestRepository
-    end
+    participant API as ResourceRequestResource
+    participant EJB as ResourceRequestServiceBean
+    participant REP as InMemoryResourceRequestRepository
+    participant MAP as ExceptionMapper
 
     C->>API: GET /requests/{id}
     API->>EJB: findById(id)
-    activate EJB
     EJB->>REP: findById(id)
-
-    alt La solicitud existe
-        REP-->>EJB: Optional con la solicitud
+    alt existe
+        REP-->>EJB: solicitud
         EJB-->>API: ResourceRequestView
         API-->>C: 200 OK
-    else La solicitud no existe
+    else no existe
         REP-->>EJB: Optional vacío
-        EJB--)MAP: RequestNotFoundException
+        EJB-->>MAP: RequestNotFoundException
         MAP-->>C: 404 REQUEST_NOT_FOUND
     end
-    deactivate EJB
 ```
 
 ### Atender una solicitud
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor C as Cliente
-    box rgba(37,99,235,0.10) Tier de presentación
-        participant API as ResourceRequestResource
-        participant MAP as ExceptionMapper
-    end
-    box rgba(124,58,237,0.10) Tier de negocio
-        participant EJB as ResourceRequestServiceBean
-    end
-    box rgba(5,150,105,0.10) Tier de datos
-        participant REP as InMemoryResourceRequestRepository
-    end
+    participant API as ResourceRequestResource
+    participant EJB as ResourceRequestServiceBean
+    participant REP as InMemoryResourceRequestRepository
+    participant MAP as ExceptionMapper
 
     C->>API: PUT /requests/{id}/attend
     API->>EJB: attend(id)
-    activate EJB
     EJB->>REP: findById(id)
-
-    alt La solicitud no existe
+    alt no existe
         REP-->>EJB: Optional vacío
-        EJB--)MAP: RequestNotFoundException
+        EJB-->>MAP: RequestNotFoundException
         MAP-->>C: 404 REQUEST_NOT_FOUND
-    else La solicitud ya está ATENDIDA
+    else ya está ATENDIDA
         REP-->>EJB: solicitud ATENDIDA
-        EJB--)MAP: AlreadyAttendedException
+        EJB-->>MAP: AlreadyAttendedException
         MAP-->>C: 409 ALREADY_ATTENDED
-    else La solicitud está PENDIENTE
+    else está PENDIENTE
         REP-->>EJB: solicitud PENDIENTE
-        EJB->>EJB: Cambiar estado a ATENDIDA
+        EJB->>EJB: cambiar estado a ATENDIDA
         EJB->>REP: save(request)
-        REP-->>EJB: copia actualizada
+        REP-->>EJB: solicitud actualizada
         EJB-->>API: ResourceRequestView
         API-->>C: 200 OK
     end
-    deactivate EJB
 ```
 
 El EJB invoca `save()` después de cambiar el estado porque el repositorio trabaja con copias: modificar el objeto recibido no altera lo almacenado.
@@ -349,26 +292,17 @@ El EJB invoca `save()` después de cambiar el estado porque el repositorio traba
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor C as Cliente
-    box rgba(37,99,235,0.10) Tier de presentación
-        participant API as ResourceRequestResource
-    end
-    box rgba(124,58,237,0.10) Tier de negocio
-        participant EJB as ResourceRequestServiceBean
-    end
-    box rgba(5,150,105,0.10) Tier de datos
-        participant REP as InMemoryResourceRequestRepository
-    end
+    participant API as ResourceRequestResource
+    participant EJB as ResourceRequestServiceBean
+    participant REP as InMemoryResourceRequestRepository
 
     C->>API: GET /requests/pending
     API->>EJB: findPending()
-    activate EJB
     EJB->>REP: findAll()
     REP-->>EJB: todas las solicitudes
-    EJB->>EJB: Filtrar estado PENDIENTE
-    EJB-->>API: List<ResourceRequestView>
-    deactivate EJB
+    EJB->>EJB: filtrar estado PENDIENTE
+    EJB-->>API: lista de ResourceRequestView
     API-->>C: 200 OK
 ```
 
@@ -382,38 +316,25 @@ Muestra los nodos y contenedores donde se ejecuta el software y cómo se comunic
 
 ```mermaid
 flowchart TB
-    classDef client fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A
-    classDef api fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
-    classDef biz fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
-    classDef data fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#0F172A
-    classDef infra fill:#F3F4F6,stroke:#6B7280,stroke-width:1px,color:#0F172A
-
-    CLIENT["<b>Cliente HTTP</b><br/>Postman · Newman · curl"]:::client
-
-    subgraph HOST["Máquina anfitriona · Docker"]
-        subgraph CT["Contenedor «recursos»"]
-            subgraph PAYARA["Payara Server 6 · JDK 17"]
+    CLIENT["Cliente HTTP<br/>Postman / Newman / curl"]
+    subgraph HOST["Máquina anfitriona (Docker)"]
+        subgraph CT["Contenedor recursos"]
+            subgraph PAYARA["Payara Server 6 / JDK 17"]
                 subgraph WAR["recursos.war"]
-                    JAXRS["<b>Contenedor web</b><br/>JAX-RS · /recursos/api/*"]:::api
-                    EJBC["<b>Contenedor EJB</b><br/>pool de ResourceRequestServiceBean"]:::biz
-                    CDI["<b>CDI</b><br/>InMemoryResourceRequestRepository<br/>instancia única"]:::data
-                    HEAP[("<b>Heap de la JVM</b><br/>ConcurrentHashMap")]:::data
+                    JAXRS["Contenedor web<br/>JAX-RS /recursos/api/*"]
+                    EJBC["Contenedor EJB<br/>pool de ResourceRequestServiceBean"]
+                    CDI["CDI<br/>InMemoryResourceRequestRepository"]
+                    HEAP[("Heap de la JVM<br/>ConcurrentHashMap")]
                 end
-                ADMIN["Consola de administración"]:::infra
+                ADMIN["Consola de administración"]
             end
         end
     end
-
-    CLIENT ==>|"HTTP · JSON<br/>puerto 8080"| JAXRS
-    CLIENT -.->|"HTTPS · 4848<br/>(opcional)"| ADMIN
-    JAXRS -->|"llamada local<br/>@Local"| EJBC
-    EJBC -->|"llamada local<br/>@Inject"| CDI
+    CLIENT -->|"HTTP 8080"| JAXRS
+    CLIENT -.->|"HTTPS 4848"| ADMIN
+    JAXRS -->|llamada local| EJBC
+    EJBC -->|llamada local| CDI
     CDI --> HEAP
-
-    style HOST fill:#F8FAFC,stroke:#94A3B8
-    style CT fill:#F1F5F9,stroke:#64748B
-    style PAYARA fill:#E2E8F0,stroke:#475569
-    style WAR fill:#FFFFFF,stroke:#334155,stroke-width:2px
 ```
 
 | Nodo / artefacto | Detalle |
@@ -431,17 +352,9 @@ Todas las llamadas internas (REST → EJB → repositorio) son **locales** dentr
 
 ```mermaid
 flowchart LR
-    classDef src fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#0F172A
-    classDef stage fill:#F3F4F6,stroke:#6B7280,stroke-width:2px,color:#0F172A
-    classDef out fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
-
-    SRC["<b>Código fuente</b><br/>pom.xml · src/"]:::src
-    B1["<b>Etapa 1 · build</b><br/>Maven 3.9 · JDK 17<br/>mvn package"]:::stage
-    WARF[["recursos.war"]]:::out
-    B2["<b>Etapa 2 · runtime</b><br/>Payara Server 6 · JDK 17<br/>despliegue automático"]:::stage
-    IMG[("<b>Imagen</b><br/>recursos-negocio")]:::out
-
-    SRC --> B1 --> WARF --> B2 --> IMG
+    SRC["Código fuente<br/>pom.xml, src/"] --> B1["Etapa 1: build<br/>Maven 3.9, JDK 17"]
+    B1 -->|recursos.war| B2["Etapa 2: runtime<br/>Payara Server 6, JDK 17"]
+    B2 --> IMG["Imagen<br/>recursos-negocio"]
 ```
 
 Imágenes base: `maven:3.9-eclipse-temurin-17` para compilar y `payara/server-full:6.2024.6-jdk17` para ejecutar; el WAR se copia a `$DEPLOY_DIR` y Payara lo despliega al arrancar. La imagen final contiene únicamente Payara y el WAR, sin Maven ni el código fuente. No se requiere Java ni Maven en la máquina anfitriona.
@@ -463,30 +376,19 @@ El diagrama muestra los casos de uso del sistema y las reglas de negocio que apl
 
 ```mermaid
 flowchart LR
-    classDef actor fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A
-    classDef uc fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
-    classDef rule fill:#FFFFFF,stroke:#D97706,stroke-width:1px,stroke-dasharray:4 3,color:#0F172A
-
-    ACTOR["👤<br/><b>Centro de atención</b>"]:::actor
-
+    ACTOR["Centro de atención"]
     subgraph SYS["Gestión de recursos"]
-        UC1(["Registrar solicitud"]):::uc
-        UC2(["Consultar todas"]):::uc
-        UC3(["Consultar por id"]):::uc
-        UC4(["Consultar pendientes"]):::uc
-        UC5(["Atender solicitud"]):::uc
+        UC1(["Registrar solicitud"])
+        UC2(["Consultar todas"])
+        UC3(["Consultar por id"])
+        UC4(["Consultar pendientes"])
+        UC5(["Atender solicitud"])
     end
-
-    R1["Cantidad mayor que cero<br/>Descripción obligatoria<br/>Tipo de recurso obligatorio<br/>Prioridad válida<br/>Estado inicial PENDIENTE"]:::rule
-    R2["La solicitud<br/>debe existir"]:::rule
-    R3["Debe existir y<br/>estar PENDIENTE"]:::rule
-
-    ACTOR --- UC1 & UC2 & UC3 & UC4 & UC5
-    UC1 -.- R1
-    UC3 -.- R2
-    UC5 -.- R3
-
-    style SYS fill:#F5F3FF,stroke:#C4B5FD
+    ACTOR --- UC1
+    ACTOR --- UC2
+    ACTOR --- UC3
+    ACTOR --- UC4
+    ACTOR --- UC5
 ```
 
 | Escenario | Flujo principal | Resultado |

@@ -10,41 +10,28 @@ Las reglas de negocio están en un **EJB de sesión sin estado** (`@Stateless`).
 
 ```mermaid
 flowchart TB
-    classDef client fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#0F172A
-    classDef api fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#0F172A
-    classDef biz fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#0F172A
-    classDef port fill:#FFFFFF,stroke:#7C3AED,stroke-width:2px,stroke-dasharray:5 3,color:#0F172A
-    classDef data fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#0F172A
-
-    C["<b>Cliente HTTP</b><br/>Postman · Newman"]:::client
-
-    subgraph WAR["Payara Server 6 · Docker"]
+    C["Cliente HTTP<br/>Postman / Newman"]
+    subgraph WAR["Payara Server 6 / Docker"]
         subgraph P["Tier de presentación"]
-            API["<b>ResourceRequestResource</b><br/>JAX-RS · ExceptionMappers"]:::api
+            API["ResourceRequestResource<br/>JAX-RS + ExceptionMappers"]
         end
         subgraph N["Tier de negocio"]
-            SVC["«interface»<br/><b>ResourceRequestService</b>"]:::port
-            EJB["<b>ResourceRequestServiceBean</b><br/>@Stateless · reglas de negocio"]:::biz
-            PORT["«interface»<br/><b>ResourceRequestRepository</b>"]:::port
+            SVC["«interface»<br/>ResourceRequestService"]
+            EJB["ResourceRequestServiceBean<br/>@Stateless"]
+            PORT["«interface»<br/>ResourceRequestRepository"]
         end
         subgraph D["Tier de datos"]
-            MEM["<b>InMemoryResourceRequestRepository</b><br/>@ApplicationScoped · ConcurrentHashMap"]:::data
+            MEM["InMemoryResourceRequestRepository<br/>@ApplicationScoped"]
         end
     end
-
-    C ==>|"HTTP · JSON"| API
+    C -->|HTTP / JSON| API
     API -->|usa| SVC
     SVC -.->|implementada por| EJB
     EJB -->|"usa (@Inject)"| PORT
     PORT -.->|implementada por| MEM
-
-    style WAR fill:#F8FAFC,stroke:#94A3B8
-    style P fill:#EFF6FF,stroke:#93C5FD
-    style N fill:#F5F3FF,stroke:#C4B5FD
-    style D fill:#ECFDF5,stroke:#6EE7B7
 ```
 
-Las interfaces (borde punteado) pertenecen al tier de negocio; el tier de datos solo implementa el puerto que el negocio define.
+Las dos interfaces pertenecen al tier de negocio; el tier de datos solo implementa el puerto que el negocio define.
 
 ### Cómo se desacopla el tier de negocio del tier de datos
 
