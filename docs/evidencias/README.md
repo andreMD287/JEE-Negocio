@@ -11,9 +11,37 @@ Se ejecutan con `mvn clean test`, sin servidor. Resultado: 46 pruebas, 0 fallos.
 | `ResourceRequestResourceTest` | 7 | La API delega en el servicio y responde 201 o 200 |
 | `ExceptionMappersTest` | 7 | Cada excepción produce su código HTTP |
 
-## Pruebas sobre la aplicación desplegada
+## Operaciones principales
 
-Se construyó la imagen Docker, se desplegó en Payara 6 y se ejecutó la colección de Postman [`recursos.postman_collection.json`](recursos.postman_collection.json) con Newman. Cada petición verifica el código HTTP y el contenido de la respuesta. Resultado: 21 peticiones, 61 verificaciones, 0 fallos. La salida completa está en [`newman-salida.txt`](newman-salida.txt).
+Se levantó la aplicación con Docker (`docker run -p 8081:8080 recursos-negocio`) y se ejecutaron las operaciones con `curl`, en este orden, sobre un contenedor recién iniciado.
+
+**Registrar dos solicitudes**
+
+![Registrar dos solicitudes](capturas/1-registrar.png)
+
+**Consultar todas las solicitudes**
+
+![Consultar todas las solicitudes](capturas/2-consultar-todas.png)
+
+**Consultar una solicitud por identificador**
+
+![Consultar una solicitud por identificador](capturas/3-consultar-por-id.png)
+
+**Atender la solicitud 1**
+
+![Atender la solicitud 1](capturas/4-atender.png)
+
+**Consultar las solicitudes pendientes (la solicitud 1 ya no aparece)**
+
+![Consultar las solicitudes pendientes (la solicitud 1 ya no aparece)](capturas/5-consultar-pendientes.png)
+
+**Intentar atender de nuevo la solicitud 1**
+
+![Intentar atender de nuevo la solicitud 1](capturas/6-atender-de-nuevo.png)
+
+## Colección completa de pruebas
+
+Además se ejecutó la colección de Postman [`recursos.postman_collection.json`](recursos.postman_collection.json) con Newman. Cada petición verifica el código HTTP y el contenido de la respuesta. Resultado: 21 peticiones, 61 verificaciones, 0 fallos. La salida completa está en [`newman-salida.txt`](newman-salida.txt).
 
 ![Resumen de Newman](newman-resumen.png)
 
@@ -40,28 +68,6 @@ Se construyó la imagen Docker, se desplegó en Payara 6 y se ejecutó la colecc
 | 19 | Cuerpo vacío | `POST /requests` | 400 `EMPTY_BODY` |
 | 20 | JSON mal formado | `POST /requests` | 400 `MALFORMED_JSON` |
 | 21 | Tipo de dato incorrecto | `POST /requests` | 400 `MALFORMED_JSON` |
-
-Ejemplo de registro (caso 1):
-
-```
-POST /recursos/api/requests
-{"disasterDescription": "Inundación en el sector norte", "resourceType": "Agua potable",
- "quantity": 200, "priority": "ALTA"}
-
-201 Created
-{"disasterDescription": "Inundación en el sector norte", "id": 1, "priority": "ALTA",
- "quantity": 200, "resourceType": "Agua potable", "status": "PENDIENTE"}
-```
-
-Ejemplo de regla de negocio (caso 8):
-
-```
-PUT /recursos/api/requests/1/attend
-
-409 Conflict
-{"code": "ALREADY_ATTENDED", "message": "La solicitud con id 1 ya fue atendida",
- "timestamp": "2026-10-15T01:26:27.797994691Z"}
-```
 
 Al desplegar, Payara registra el EJB en JNDI por su interfaz de negocio:
 
